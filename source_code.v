@@ -1,40 +1,40 @@
 module DigitalClock_12hrFormat(
-    input clk,
-    input center,
-    input right,
-    input left,
-    input up,
-    input down,
-    input M_00,
-    input M_01,
-    input M_02,
-    input M_03,
-    input M_10,
-    input M_11,
-    input M_12,
-    input H_00,
-    input H_01,
-    input H_02,
-    input H_10,
-    input H_11,
-    output [6:0] seg,
-    output [3:0] an,
-    output AMPM_indicator_led,
+    input clk,       //system clock
+    input center,    //center button of fpga board
+    input right,     //right button of fpga board
+    input left,      //left button of fpga board
+    input up,        //up button of fpga board
+    input down,      //down button of fpga board 
+    input M_00,      // 0th bit of alarm time minute-ones input  // toggle buttons are used to set the alarm time
+    input M_01,      // 1st bit of alarm time minute-ones input
+    input M_02,      // 2nd bit of alarm time minute-ones input
+    input M_03,      // 3rd bit of alarm time minute-ones input
+    input M_10,      // 0th bit of alarm time minute-tens input
+    input M_11,      // 1st bit of alarm time minute-tens input
+    input M_12,      // 2nd bit of alarm time minute-tens input
+    input H_00,      // 0th bit of alarm time hour-ones input
+    input H_01,      // 1st bit of alarm time hour-ones input
+    input H_02,      // 2nd bit of alarm time hour-ones input
+    input H_10,      // 0th bit of alarm time hour-tens input
+    input H_11,      // 1st bit of alarm time hour-tens input
+    output [6:0] seg, //output to the seven segment display module
+    output [3:0] an,  // enabler for the 4 seven segment display boxes 
+    output AMPM_indicator_led,  
     output clock_mode_indicator_led,
-    output Alarm1,
+    output Alarm1,  // alarm leds 
     output Alarm2,
     output Alarm3,
     output Alarm4,
     output Alarm5,
-    input stop
+    input stop     // stop button
 );
  
-    reg [31:0] counter = 0;
-    parameter max_count = 25_000_000;
-    reg [3:0] H_in1;
-    reg [3:0] H_in0;
-    reg [3:0] M_in1;
-    reg [3:0] M_in0;
+    reg [31:0] counter = 0;        // upade after every max_count used to set clock update time 
+    parameter max_count = 25_000_000;  
+    reg [3:0] H_in1;               // the tens place number in hour
+    reg [3:0] H_in0;              //the ones place number in hour 
+    reg [3:0] M_in1;                   // the tens place number in minute
+    reg [3:0] M_in0;               // the ones place number in minute
     always @(*)begin
     H_in1=H_10+H_11*2;
         H_in0=H_00+H_01*2+H_02*4;
@@ -42,10 +42,12 @@ module DigitalClock_12hrFormat(
         M_in0=M_00+M_01*2+M_02*4+M_03*8;
    
     end
-    reg [5:0] hrs,min,sec = 0;
-    reg [3:0] min_ones, min_tens, hrs_ones, hrs_tens = 0;
-    reg toggle = 0;  //0 min 1 hour
-    reg x=0;
+    reg [5:0] hrs,min,sec = 0;    // registers to store hours,mins and seconds
+    reg [3:0] min_ones, min_tens, hrs_ones, hrs_tens = 0;  //the output registers to the seven segment display
+
+    reg toggle = 0;  //0 min 1 hour  // toggled when we press the left or right key // initially 0 (set-time mode) 1(clock-mode)
+
+    reg x=0;    // alarm indicator 0 means off initially 
    
 assign Alarm1 = x;
 assign Alarm2 = x;
@@ -61,26 +63,26 @@ if(stop)
 x<=0;
 if({H_in1,H_in0,M_in1,M_in0}=={hrs_tens,hrs_ones,min_tens,min_ones})
 begin
-if(stop==0)
-  x<=1;
+if(stop==0)    // stop button to stop the alarm
+  x<=1;    //alarm on
   else
   x<=0;
 end
 end
 
 
-    reg pm = 0;
-    assign AMPM_indicator_led = pm;
+    reg pm = 0;    // am pm indicator 0 means pm and 1 means am 
+    assign AMPM_indicator_led = pm;   // by default 0
 
-    reg clock_mode = 0;
+    reg clock_mode = 0;    // clock_mode indicator
     assign clock_mode_indicator_led = clock_mode;
 
     seven_segment SSM(clk,min_ones,min_tens,hrs_ones,hrs_tens,seg,an);
-
+// parameters are equivalent to the constants
     parameter display_time = 1'b0;
     parameter set_time = 1'b1;
-    reg current_mode = set_time;
-
+    reg current_mode = set_time;   // by defalut set time mode 
+// invoked at every positive edge of the clock
     always @(posedge clk)
     begin
          case(current_mode)
@@ -213,18 +215,18 @@ end
 
 
 module seven_segment(input clk,
-input [3:0] min_ones,//0-9
+input [3:0] min_ones,//0-9   
 input [3:0] min_tens,//0-9
 input [3:0] hrs_ones,//0-9
 input [1:0] hrs_tens,//0-2
 output reg [6:0] seg,
 output reg [3:0] an//4 enablers
 );//100Mhz basys 3board
-reg [1:0] digit_display=0;//0-3 digits
-reg [6:0] display[3:0];
-reg [18:0] counter=0;
+reg [1:0] digit_display=0;//0-3 digits  // for 4 boxes of the display
+reg [6:0] display[3:0];   //4 boxes of seven segments
+reg [18:0] counter=0;     // used for setting the refresh rate
 parameter max_count=125_000;
-wire [3:0] four_bit [3:0];
+wire [3:0] four_bit [3:0];  // wires which contains the gigits to be stored in the corresponding display boxes
 assign four_bit[0]= min_ones;
 assign four_bit[1]= min_tens;
 assign four_bit[2]= hrs_ones;
